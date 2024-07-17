@@ -1,3 +1,5 @@
+... This is a comment
+
 DEF START
 
 VAR STR text "Hello World, from Temma"
