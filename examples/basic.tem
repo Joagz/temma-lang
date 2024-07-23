@@ -4,7 +4,7 @@ DEF START
 
 VAR STR text "Hello World, from Temma"
 
-IF 1<2
+IF ( 1 < 2 )
 
 ALLOC 16 example_byte
 

@@ -13,4 +13,7 @@
 #define TEMMA_VARIBALE_RANGE_START          0xFF
 #define TEMMA_VARIBALE_RANGE_END            0xFFFF
 
+#define BASE_DECIMAL                        0x0A
+#define BASE_HEXADECIMAL                    0x10
+
 #endif // !CONFIG_H

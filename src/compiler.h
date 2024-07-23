@@ -7,5 +7,4 @@
 #define EXIT_SUCCESS 0
 #define EXIT_ERROR_UNKNOWN 1
 
-
 #endif // !COMPILER_H

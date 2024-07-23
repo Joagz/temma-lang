@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-
 #include "../util/debug.h"
 #include "../config.h"
 

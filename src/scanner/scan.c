@@ -1,10 +1,8 @@
-#include "scan.h"
-#include "tokens.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-
-#define BASE_DECIMAL 10
+#include "scan.h"
+#include "tokens.h"
 
 void printldt(struct line_desc arr[], size_t length);
 void printtokens(token_t *arr, size_t length);
@@ -26,11 +24,26 @@ static struct token_desc token_descriptor_table[] = {
   {TOKEN_VALUE_IF, TOKEN_KW_IF},
   {TOKEN_VALUE_END, TOKEN_KW_END},
   {TOKEN_VALUE_VAR, TOKEN_KW_VAR},
-  
+
   {"", TOKEN_NULL}
 };
 
-void put_identifier(uint16_t identifier_type){
+token_t get_token_type(char *compare){
+  int i = 0;
+  while(token_descriptor_table[i].tkn != TOKEN_NULL)
+  {
+    if(strcmp(token_descriptor_table[i].value, compare) == 0)
+    {
+      return token_descriptor_table[i].tkn;
+    }
+    i++;
+  }
+  return TOKEN_NULL;
+}
+
+// Put identifier of identifier_type type.
+// kw defines the type of keyword.
+void put_identifier(uint16_t identifier_type, int kw){
   if(current_identifier_id > TEMMA_MAX_VARIABLE_AMMOUNT){
     printf("MAXIMUM VARIABLE AMMOUNT REACHED PER FILE:");
     printf(" cannot insert more descriptors\n");
@@ -38,7 +51,46 @@ void put_identifier(uint16_t identifier_type){
     exit(1);
   }
 
-  char *identifier = no_tokenized_values[offset];
+  // This part extracts the value of the identifier
+  char *identifier;
+  switch (kw) {
+    case TOKEN_KW_DEF:
+      identifier = no_tokenized_values[offset];
+      break;
+    case TOKEN_KW_VAR:
+      offset++;
+      identifier = no_tokenized_values[offset];
+      offset++;
+
+      switch(identifier_type) {
+        // Extract value of var
+        case TOKEN_TYPE_STR:
+
+
+
+          // Extract STR
+          break;  
+        case TOKEN_TYPE_BOOL:
+
+
+
+          // Convert true-false to binary
+          break;
+        case TOKEN_TYPE_ARRAY:
+          // Should this call some function recursively? well, we need to first get 
+          // array type:
+          offset++;
+          token_t tkn = get_token_type(no_tokenized_values[offset]); 
+          offset++;
+
+          if(tkn == TOKEN_NULL)
+            return;
+
+          break;
+      }
+
+      break;
+  }
   printf("Putting identifier '%s'\n", identifier);
   offset++;
 
@@ -65,7 +117,7 @@ int set_tokens(struct line_desc line_descriptor)
     {
       printf("compare %s with %s\n", no_tokenized_values[offset], token_descriptor_table[tdti].value);
       if(strcmp(no_tokenized_values[offset], token_descriptor_table[tdti].value) == 0){
-        
+
         if(token_descriptor_table[tdti].tkn == TOKEN_KW_COMMENT)
           goto out;
 
@@ -77,7 +129,7 @@ int set_tokens(struct line_desc line_descriptor)
         offset++;
         switch (current_token) {
           case TOKEN_KW_DEF:
-            put_identifier(TOKEN_TYPE_FUNCTION);
+            put_identifier(TOKEN_TYPE_FUNCTION, TOKEN_KW_DEF);
             goto out;
             break;
           case TOKEN_KW_VAR:
@@ -85,27 +137,29 @@ int set_tokens(struct line_desc line_descriptor)
             char *str = no_tokenized_values[offset];
             printf("Allegded var type: %s\n", str);
             /*
+             * # GET IDENTIFIER TYPE AND PUT IT IN THE TABLE
+             * 
              * If-else ladder, this is horrible, but cannot be worked out better for now
              * and I'm using C, so very valid. =)
              */
             if(strcmp(str, TOKEN_VALUE_DATA_INT)==0){
-              put_identifier(TOKEN_TYPE_INT);
+              put_identifier(TOKEN_TYPE_INT, TOKEN_KW_VAR);
             }
             else if(strcmp(str, TOKEN_VALUE_DATA_STR)==0)
             {         
-              put_identifier(TOKEN_TYPE_STR);
+              put_identifier(TOKEN_TYPE_STR, TOKEN_KW_VAR);
             }
             else if(strcmp(str, TOKEN_VALUE_DATA_BOOL)==0)
             {
-              put_identifier(TOKEN_TYPE_BOOL);
+              put_identifier(TOKEN_TYPE_BOOL, TOKEN_KW_VAR);
             }
             else if(strcmp(str, TOKEN_VALUE_DATA_CHAR)==0)
             {
-              put_identifier(TOKEN_TYPE_CHAR);
+              put_identifier(TOKEN_TYPE_CHAR, TOKEN_KW_VAR);
             }
             else if(strcmp(str, TOKEN_VALUE_DATA_ARRAY)==0)
             {
-              put_identifier(TOKEN_TYPE_ARRAY);
+              put_identifier(TOKEN_TYPE_ARRAY, TOKEN_KW_VAR);
             }
             goto out;
             break;
@@ -120,13 +174,14 @@ out:
 
 token_t* get_token_list_from_file(FILE *fp)
 {
-  char *cur_word    = (char*) malloc(sizeof(char) * TEMMA_DEFAULT_TOKEN_SIZE);
   char c            = 0;
   size_t num_lines  = 0;
   size_t num_words  = 0;
   size_t bytes_read = 0;
   size_t k          = 0;
   size_t ldsi       = 0;
+
+  char *cur_word = (char*) malloc(sizeof(char) * TEMMA_DEFAULT_TOKEN_SIZE);
   memset(cur_word, 0, sizeof(char) * TEMMA_DEFAULT_TOKEN_SIZE);
 
   while((c=getc(fp)) > 0)
@@ -151,6 +206,41 @@ token_t* get_token_list_from_file(FILE *fp)
 
       num_lines++;    
       ldsi = 0;
+      continue;
+    }
+
+    // Get strings
+    if(c == '"' && k == 0)
+    {
+      while((c=getc(fp))!=0 && c!='"')
+      {
+        cur_word[k] = c;
+        k++;
+      }
+      strncpy(no_tokenized_values[num_words], cur_word, k);
+      k=0;
+      num_words++;
+      ldsi++;
+      continue;
+    }
+
+    // Get parenthesis
+    if(c == '(' && k == 0)
+    {
+
+      int j = k;
+      while((c=getc(fp))!=0 && c!=')')
+      {
+        if(c != ' ') {
+          cur_word[j] = c;
+          j++;
+        }
+        k++;
+      }
+      strncpy(no_tokenized_values[num_words], cur_word, j);
+      k=0;
+      num_words++;
+      ldsi++;
       continue;
     }
 
@@ -188,6 +278,13 @@ token_t* get_token_list_from_file(FILE *fp)
   printf("bytes_read: %zu\n", bytes_read);
   printf("num_words: %zu\n", num_words);
   printtokens(token_list, num_lines);
+  printf("\n");
+  printf("NO TOKENIZED VALUES: \n");
+  for(int i = 0; i < num_words; i++)
+  {
+    printf("%s\n", no_tokenized_values[i]);
+  }
+  printf("\n");
   for(int i = 0; i < idti+1; i++) {
     printf("IDENTIFIER%-6d\tID: %-6d\tTYPE: %-6d\n", i, identifier_descriptor_table[i].identifier_id, identifier_descriptor_table[i].type);
   }
@@ -198,7 +295,6 @@ token_t* get_token_list_from_file(FILE *fp)
 
 int scan_file_list(char *farr[], size_t farr_length)
 {
-
   for(int i = 0; i < farr_length; i++)
   {
     char *filename = farr[i];
@@ -212,16 +308,6 @@ int scan_file_list(char *farr[], size_t farr_length)
 
   return 0; 
 }
-
-
-
-
-
-
-
-
-
-
 
 /* ########### UTILITY FUNCTIONS ########### */
 
